@@ -1,24 +1,26 @@
 import React, { useState, useEffect } from "react";
 import {
-  Text,
   View,
   StyleSheet,
   Dimensions,
   ActivityIndicator,
+  Text,
 } from "react-native";
-import MapView, { Marker, Callout, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Callout, Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import axios from "axios";
 import ContainerMarker from "./components/ContainerMarker";
-
-interface Container {
-  container_code: string;
-  name: string;
-  lang: number;
-  long: number;
-  occupancy_ratio: number;
-  is_full: boolean;
-  id: number;
-}
+import RoutePolyline from "./components/RoutePolyline";
+import TruckMarker from "./components/TruckMarker";
+import RouteDetails from "./components/RouteDetails";
+import {
+  Container,
+  TRUCK_DEPOT,
+  filterFullContainers,
+  calculateOptimalRoute,
+  calculateTotalDistance,
+  formatDistance,
+  LatLng,
+} from "./utils/tsp";
 
 export default function Index() {
   const [containers, setContainers] = useState<Container[]>([]);
@@ -26,9 +28,12 @@ export default function Index() {
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(
     null
   );
+  const [routeCoordinates, setRouteCoordinates] = useState<LatLng[]>([]);
+  const [routeContainers, setRouteContainers] = useState<Container[]>([]);
+  const [routeDistance, setRouteDistance] = useState<string>("");
   const [region, setRegion] = useState({
-    latitude: 40.9741, // Default container area center
-    longitude: 28.8754,
+    latitude: TRUCK_DEPOT.latitude,
+    longitude: TRUCK_DEPOT.longitude,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
   });
@@ -44,44 +49,52 @@ export default function Index() {
         const containersData = response.data;
         setContainers(containersData);
 
-        // Calculate the center point of all containers
+        // Filter containers that need collection (occupancy >= 70%)
+        const fullContainers = filterFullContainers(containersData);
+        setRouteContainers(fullContainers);
+
+        // Calculate optimal route
+        const route = calculateOptimalRoute(TRUCK_DEPOT, fullContainers);
+        setRouteCoordinates(route);
+
+        // Calculate and format total route distance
+        const distance = calculateTotalDistance(route);
+        setRouteDistance(formatDistance(distance));
+
+        // Calculate the center point and zoom level
         if (containersData.length > 0) {
-          let totalLat = 0;
-          let totalLong = 0;
-          let minLat = Number.MAX_VALUE;
-          let maxLat = Number.MIN_VALUE;
-          let minLong = Number.MAX_VALUE;
-          let maxLong = Number.MIN_VALUE;
+          let minLat = Math.min(
+            ...containersData.map((c: Container) => c.lang),
+            TRUCK_DEPOT.latitude
+          );
+          let maxLat = Math.max(
+            ...containersData.map((c: Container) => c.lang),
+            TRUCK_DEPOT.latitude
+          );
+          let minLong = Math.min(
+            ...containersData.map((c: Container) => c.long),
+            TRUCK_DEPOT.longitude
+          );
+          let maxLong = Math.max(
+            ...containersData.map((c: Container) => c.long),
+            TRUCK_DEPOT.longitude
+          );
 
-          containersData.forEach((container: Container) => {
-            totalLat += container.lang;
-            totalLong += container.long;
+          const centerLat = (minLat + maxLat) / 2;
+          const centerLong = (minLong + maxLong) / 2;
+          const latDelta = (maxLat - minLat) * 1.2;
+          const longDelta = (maxLong - minLong) * 1.2;
 
-            // Track min and max values to calculate zoom
-            minLat = Math.min(minLat, container.lang);
-            maxLat = Math.max(maxLat, container.lang);
-            minLong = Math.min(minLong, container.long);
-            maxLong = Math.max(maxLong, container.long);
-          });
-
-          const centerLat = totalLat / containersData.length;
-          const centerLong = totalLong / containersData.length;
-
-          // Calculate appropriate zoom level to fit all containers
-          const latDelta = (maxLat - minLat) * 1.2; // 20% padding
-          const longDelta = (maxLong - minLong) * 1.2; // 20% padding
-
-          // Set the map region to center on containers with appropriate zoom
           setRegion({
             latitude: centerLat,
             longitude: centerLong,
-            latitudeDelta: Math.max(0.008, latDelta),
-            longitudeDelta: Math.max(0.008, longDelta),
+            latitudeDelta: Math.max(0.01, latDelta),
+            longitudeDelta: Math.max(0.01, longDelta),
           });
         }
       } catch (error) {
         console.error("Error:", error);
-        setErrorMsg("Failed to load data");
+        setErrorMsg("Veri yüklenirken bir hata oluştu");
       } finally {
         setLoading(false);
       }
@@ -96,17 +109,12 @@ export default function Index() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0000ff" />
-        <Text>Konteynırlar yükleniyor...</Text>
+        <Text style={styles.loadingText}>Konteynırlar yükleniyor...</Text>
       </View>
     );
   }
-
-  // Function to get marker color based on occupancy
-  const getOccupancyStatusColor = (ratio: number) => {
-    return ratio >= 0.7 ? "#ff0000" : "#00cc00";
-  };
 
   return (
     <View style={styles.container}>
@@ -121,6 +129,10 @@ export default function Index() {
         minZoomLevel={14}
         maxZoomLevel={20}
       >
+        {/* Truck/Depot Marker */}
+        <TruckMarker position={TRUCK_DEPOT} />
+
+        {/* Container Markers */}
         {containers.map((container) => (
           <ContainerMarker
             key={container.id}
@@ -134,6 +146,10 @@ export default function Index() {
           />
         ))}
 
+        {/* Route Polyline */}
+        <RoutePolyline coordinates={routeCoordinates} />
+
+        {/* Selected Container Info */}
         {selectedContainer && (
           <Marker
             coordinate={{
@@ -148,14 +164,15 @@ export default function Index() {
                   {selectedContainer.container_code}
                 </Text>
                 <View style={styles.calloutRow}>
-                  <Text style={styles.calloutLabel}>Occupancy:</Text>
+                  <Text style={styles.calloutLabel}>Doluluk:</Text>
                   <Text
                     style={[
                       styles.calloutValue,
                       {
-                        color: getOccupancyStatusColor(
-                          selectedContainer.occupancy_ratio
-                        ),
+                        color:
+                          selectedContainer.occupancy_ratio >= 0.7
+                            ? "#ff0000"
+                            : "#00cc00",
                       },
                     ]}
                   >
@@ -163,7 +180,7 @@ export default function Index() {
                   </Text>
                 </View>
                 <View style={styles.calloutRow}>
-                  <Text style={styles.calloutLabel}>Status:</Text>
+                  <Text style={styles.calloutLabel}>Durum:</Text>
                   <Text
                     style={[
                       styles.calloutValue,
@@ -174,7 +191,7 @@ export default function Index() {
                       },
                     ]}
                   >
-                    {selectedContainer.is_full ? "Full" : "Available"}
+                    {selectedContainer.is_full ? "Dolu" : "Müsait"}
                   </Text>
                 </View>
               </View>
@@ -182,6 +199,12 @@ export default function Index() {
           </Marker>
         )}
       </MapView>
+
+      {/* Route Details Panel */}
+      <RouteDetails
+        containers={routeContainers}
+        totalDistance={routeDistance}
+      />
 
       {errorMsg && (
         <View style={styles.errorContainer}>
@@ -195,12 +218,20 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "black",
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  loadingContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  map: {
-    width: Dimensions.get("window").width,
-    height: Dimensions.get("window").height,
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#666",
   },
   callout: {
     width: 200,
@@ -233,6 +264,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 0, 0, 0.7)",
     padding: 10,
     borderRadius: 5,
+    alignSelf: "center",
   },
   errorText: {
     color: "white",
