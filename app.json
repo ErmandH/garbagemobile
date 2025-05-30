@@ -32,6 +32,16 @@
         "googleMaps": {
           "apiKey": "AIzaSyDirGn0mYGt6ws1pBsHCnWzLv-FcgFnq4g"
         }
+      },
+      "manifest": {
+        "application": {
+          "meta-data": [
+            {
+              "name": "com.google.android.geo.API_KEY",
+              "value": "AIzaSyDirGn0mYGt6ws1pBsHCnWzLv-FcgFnq4g"
+            }
+          ]
+        }
       }
     },
     "web": {
@@ -54,6 +64,12 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Bu uygulama harita üzerinde konumunuzu göstermek için konum erişimi gerektirir."
+        }
+      ],
+      [
+        "expo-maps",
+        {
+          "googleMapsApiKey": "AIzaSyDirGn0mYGt6ws1pBsHCnWzLv-FcgFnq4g"
         }
       ]
     ],

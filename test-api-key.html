@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Google Maps API Test</title>
+    <style>
+      #map {
+        height: 400px;
+        width: 100%;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 5px;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Google Maps API Key Test</h1>
+    <div id="status" class="status">Testing API key...</div>
+    <div id="map"></div>
+
+    <script>
+      function initMap() {
+        try {
+          var map = new google.maps.Map(document.getElementById("map"), {
+            center: { lat: 40.9765, lng: 28.8706 }, // Truck depot coordinates
+            zoom: 15,
+          });
+
+          // Add a marker
+          var marker = new google.maps.Marker({
+            position: { lat: 40.9765, lng: 28.8706 },
+            map: map,
+            title: "Test Marker",
+          });
+
+          document.getElementById("status").className = "status success";
+          document.getElementById("status").innerHTML =
+            "✅ API Key is working! Map loaded successfully.";
+        } catch (error) {
+          document.getElementById("status").className = "status error";
+          document.getElementById("status").innerHTML =
+            "❌ Error: " + error.message;
+        }
+      }
+
+      function handleMapError() {
+        document.getElementById("status").className = "status error";
+        document.getElementById("status").innerHTML =
+          "❌ API Key Error: Check console for details";
+      }
+
+      window.onerror = function (msg, url, line, col, error) {
+        if (msg.includes("Google") || msg.includes("Maps")) {
+          handleMapError();
+        }
+      };
+    </script>
+
+    <!-- Replace YOUR_API_KEY with your actual API key -->
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDirGn0mYGt6ws1pBsHCnWzLv-FcgFnq4g&callback=initMap&libraries=&v=weekly"
+      async
+      defer
+      onerror="handleMapError()"
+    ></script>
+  </body>
+</html>
