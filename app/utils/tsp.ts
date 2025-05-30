@@ -10,6 +10,17 @@ export interface Container {
 	is_full: boolean;
 }
 
+export interface RouteInfo {
+	totalDistance: number;
+	totalDuration: number;
+	segments: Array<{
+		distance: number;
+		duration: number;
+		from: string;
+		to: string;
+	}>;
+}
+
 export const TRUCK_DEPOT: LatLng = {
 	latitude: 40.9765,
 	longitude: 28.8706,
@@ -79,7 +90,7 @@ export function calculateOptimalRoute(
 	return route;
 }
 
-// Calculate total route distance in kilometers
+// Calculate total route distance in kilometers (fallback for straight line)
 export function calculateTotalDistance(route: LatLng[]): number {
 	let totalDistance = 0;
 	for (let i = 0; i < route.length - 1; i++) {
@@ -91,4 +102,75 @@ export function calculateTotalDistance(route: LatLng[]): number {
 // Format distance to human readable string
 export function formatDistance(distance: number): string {
 	return `${distance.toFixed(2)} km`;
+}
+
+// Format duration to human readable string
+export function formatDuration(duration: number): string {
+	const hours = Math.floor(duration / 60);
+	const minutes = Math.round(duration % 60);
+
+	if (hours > 0) {
+		return `${hours}s ${minutes}dk`;
+	}
+	return `${minutes}dk`;
+}
+
+// Get container names for route display
+export function getRouteContainerNames(route: LatLng[], containers: Container[], depot: LatLng): string[] {
+	const names = ["Depo"];
+
+	route.slice(1, -1).forEach(coord => {
+		const container = containers.find(c =>
+			Math.abs(c.lang - coord.latitude) < 0.0001 &&
+			Math.abs(c.long - coord.longitude) < 0.0001
+		);
+		if (container) {
+			names.push(container.container_code);
+		}
+	});
+
+	names.push("Depo");
+	return names;
+}
+
+// Generate vibrant colors for route segments
+export function generateRouteColors(segmentCount: number): string[] {
+	const colors: string[] = [];
+	const predefinedColors = [
+		'#FF6B6B', // Red
+		'#4ECDC4', // Teal
+		'#45B7D1', // Blue
+		'#96CEB4', // Green
+		'#FFEAA7', // Yellow
+		'#DDA0DD', // Plum
+		'#98D8C8', // Mint
+		'#F7DC6F', // Light Yellow
+		'#BB8FCE', // Light Purple
+		'#85C1E9', // Light Blue
+		'#F8C471', // Orange
+		'#82E0AA', // Light Green
+		'#F1948A', // Light Red
+		'#85C1E9', // Sky Blue
+		'#D7BDE2', // Lavender
+	];
+
+	for (let i = 0; i < segmentCount; i++) {
+		if (i < predefinedColors.length) {
+			colors.push(predefinedColors[i]);
+		} else {
+			// Generate random vibrant color if we run out of predefined ones
+			const hue = (i * 137.508) % 360; // Golden angle approximation
+			const saturation = 70 + Math.random() * 30; // 70-100%
+			const lightness = 45 + Math.random() * 20; // 45-65%
+			colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+		}
+	}
+
+	return colors;
+}
+
+// Get color for a specific segment index
+export function getSegmentColor(segmentIndex: number, totalSegments: number): string {
+	const colors = generateRouteColors(totalSegments);
+	return colors[segmentIndex] || '#FF6B6B';
 } 

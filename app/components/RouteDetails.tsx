@@ -1,16 +1,40 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
-import { Container } from "../utils/tsp";
+import {
+  Container,
+  RouteInfo,
+  formatDuration,
+  getSegmentColor,
+} from "../utils/tsp";
 
 interface RouteDetailsProps {
   containers: Container[];
   totalDistance: string;
+  onRouteInfoUpdate?: (info: RouteInfo) => void;
 }
 
 const RouteDetails: React.FC<RouteDetailsProps> = ({
   containers,
   totalDistance,
+  onRouteInfoUpdate,
 }) => {
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
+
+  // Generate colors for route segments
+  const segmentColors = React.useMemo(() => {
+    const totalSegments = containers.length + 1; // +1 for return to depot
+    return Array.from({ length: totalSegments }, (_, index) =>
+      getSegmentColor(index, totalSegments)
+    );
+  }, [containers.length]);
+
+  // Update route info when received from parent
+  React.useEffect(() => {
+    if (onRouteInfoUpdate) {
+      // This will be called when route info is available
+    }
+  }, [onRouteInfoUpdate]);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -19,7 +43,9 @@ const RouteDetails: React.FC<RouteDetailsProps> = ({
       </View>
       <ScrollView style={styles.scrollView}>
         <View style={styles.step}>
-          <Text style={styles.stepNumber}>1</Text>
+          <View style={[styles.stepNumber, { backgroundColor: "#666" }]}>
+            <Text style={styles.stepNumberText}>1</Text>
+          </View>
           <View style={styles.stepContent}>
             <Text style={styles.stepText}>🚛 Başlangıç (Depo)</Text>
             <Text style={styles.subText}>Araç depoda</Text>
@@ -27,9 +53,24 @@ const RouteDetails: React.FC<RouteDetailsProps> = ({
         </View>
         {containers.map((container, index) => (
           <View key={container.id} style={styles.step}>
-            <Text style={styles.stepNumber}>{index + 2}</Text>
+            <View
+              style={[
+                styles.stepNumber,
+                { backgroundColor: segmentColors[index] },
+              ]}
+            >
+              <Text style={styles.stepNumberText}>{index + 2}</Text>
+            </View>
             <View style={styles.stepContent}>
-              <Text style={styles.stepText}>{container.container_code}</Text>
+              <View style={styles.stepHeader}>
+                <Text style={styles.stepText}>{container.container_code}</Text>
+                <View
+                  style={[
+                    styles.colorIndicator,
+                    { backgroundColor: segmentColors[index] },
+                  ]}
+                />
+              </View>
               <Text
                 style={[
                   styles.subText,
@@ -45,7 +86,14 @@ const RouteDetails: React.FC<RouteDetailsProps> = ({
           </View>
         ))}
         <View style={styles.step}>
-          <Text style={styles.stepNumber}>{containers.length + 2}</Text>
+          <View
+            style={[
+              styles.stepNumber,
+              { backgroundColor: segmentColors[containers.length] || "#666" },
+            ]}
+          >
+            <Text style={styles.stepNumberText}>{containers.length + 2}</Text>
+          </View>
           <View style={styles.stepContent}>
             <Text style={styles.stepText}>🚛 Bitiş (Depo)</Text>
             <Text style={styles.subText}>Araç depoya dönüyor</Text>
@@ -58,14 +106,11 @@ const RouteDetails: React.FC<RouteDetailsProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: "absolute",
-    top: 10,
-    right: 10,
     backgroundColor: "white",
     borderRadius: 8,
-    padding: 10,
+    padding: 8,
     width: 220,
-    maxHeight: "60%",
+    maxHeight: "75%",
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -78,52 +123,66 @@ const styles = StyleSheet.create({
   header: {
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
-    paddingBottom: 8,
-    marginBottom: 8,
+    paddingBottom: 6,
+    marginBottom: 6,
   },
   title: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "bold",
     color: "#1976D2",
   },
   distance: {
-    fontSize: 14,
+    fontSize: 11,
     color: "#666",
-    marginTop: 4,
+    marginTop: 1,
   },
   scrollView: {
     flexGrow: 0,
   },
   step: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
+    alignItems: "flex-start",
+    paddingVertical: 4,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
   stepNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#1976D2",
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 6,
+    marginTop: 1,
+  },
+  stepNumberText: {
     color: "white",
-    textAlign: "center",
-    lineHeight: 24,
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "bold",
-    marginRight: 8,
   },
   stepContent: {
     flex: 1,
   },
+  stepHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   stepText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "500",
+    flex: 1,
+  },
+  colorIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginLeft: 4,
   },
   subText: {
-    fontSize: 12,
+    fontSize: 10,
     color: "#666",
-    marginTop: 2,
+    marginTop: 1,
   },
 });
 

@@ -9,14 +9,30 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyDirGn0mYGt6ws1pBsHCnWzLv-FcgFnq4g"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.garbagemobile",
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "usesCleartextTraffic": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDirGn0mYGt6ws1pBsHCnWzLv-FcgFnq4g"
+        }
+      }
     },
     "web": {
       "bundler": "metro",
@@ -33,10 +49,23 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Bu uygulama harita üzerinde konumunuzu göstermek için konum erişimi gerektirir."
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "52ef0a0a-5513-40ad-88e9-3b0a72a50f17"
+      },
+      "googleMapsApiKey": "AIzaSyDirGn0mYGt6ws1pBsHCnWzLv-FcgFnq4g"
     }
   }
 }
